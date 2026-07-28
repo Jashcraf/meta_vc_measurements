@@ -18,6 +18,9 @@ wavelengths = [
     1780,
 ]
 
+rms_dia = []
+rms_ret = []
+
 def plot_mueller(M, cmap="RdBu_r", vmin=-1, vmax=1, title=None):
 
     fig, axs = plt.subplots(ncols=4, nrows=4, figsize=[10, 10])
@@ -68,8 +71,16 @@ for wvl in wavelengths:
             # Break up the mueller matrix
             M_ret[a, b], M_dia[a, b] = decompose_retarder(mueller[a, b], return_all=True)
 
-    plot_mueller(M_dia, title=f"Diattenuator {wvl}nm")
-    plot_mueller(M_ret, title=f"Retarder {wvl}nm")
-    plt.show()
+    mse_dia = np.nanmean((M_dia - np.eye(4))**2)
+    mse_ret = np.nanmean((M_ret - np.eye(4))**2)
+    rms_dia.append(mse_dia)
+    rms_ret.append(mse_ret)
 
+plt.figure()
+plt.plot(wavelengths, rms_dia, label="Diattenuation", marker="x", linestyle="None")
+plt.plot(wavelengths, rms_ret, label="Retardance", marker="o", linestyle="None")
+plt.ylabel("Mean Squared Error to Identity Matrix")
+plt.xlabel("Wavelength, nm")
+plt.legend()
+plt.show()
 
