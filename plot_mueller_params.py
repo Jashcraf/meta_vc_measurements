@@ -53,23 +53,31 @@ def clean_array(M):
     M[M == np.nan] = 0.
     return M
 
+def valid_mask(M):
+    """Pixels that permit a Lu-Chipman decomposition."""
+    T = M[..., 0, 0]
+    with np.errstate(invalid="ignore", divide="ignore"):
+        D = np.sqrt(np.sum((M[..., 0, 1:] / T[..., None])**2, axis=-1))
+    return np.all(np.isfinite(M), axis=(-2, -1)) & (T > 0) & (D < 1)
+
+
 for wvl in wavelengths:
 
     # load data
     mueller_pth = data_pth / f"spatial_cal_scalar_vortexH_1modes_1e-40ftol_{wvl}nm.fits"
     mueller = fits.getdata(mueller_pth)
-    mueller = clean_array(mueller)
+    good = valid_mask(mueller)
     
-    M_dia = np.zeros_like(mueller)
-    M_ret = np.zeros_like(mueller)
-    M_dep = np.zeros_like(mueller)
+    M_dia = np.full_like(mueller, np.nan)
+    M_ret = np.full_like(mueller, np.nan)
+    M_dep = np.full_like(mueller, np.nan)
 
-    # Do this the slow way
-    for a in range(mueller.shape[0]):
-        for b in range(mueller.shape[1]):
             
-            # Break up the mueller matrix
-            M_ret[a, b], M_dia[a, b] = decompose_retarder(mueller[a, b], return_all=True)
+    # Break up the mueller matrix
+    M_dep[good], M_ret[good], M_dia[good] = decompose_depolarizer(mueller[good], return_all=True)
+
+    plot_mueller(M_ret)
+    plt.show()
 
     mse_dia = np.nanmean((M_dia - np.eye(4))**2)
     mse_ret = np.nanmean((M_ret - np.eye(4))**2)
